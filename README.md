@@ -29,6 +29,15 @@ library. In no particular order, here are some of our goals.
    process of using and developing machine learning models, to help them better
    understand the true extents of what is possible.
 
+## How do I get started?
+
+Depending on when you are reading this, this library may or may not already be
+prepackaged with the robot controller app. If that is the case, then you can
+jump directly to the usage guidelines. If not, or if you're trying to use this
+library outisde of the FTC codebase (which is supported, acceptable, and
+encouraged!), you'll first want to follow the steps in the Installation section.
+You can then continue to the usage section, as above.
+
 ## How does it work?
 
 The library's operation can be thought of as being broken into a few distinct
@@ -49,15 +58,6 @@ Then, the following runs indefinitely:
 A more detailed understanding of each of the steps involved can be found in the
 documentation and comments for each of the parts of the system.
 
-## How do I get started?
-
-Depending on when you are reading this, this library may or may not already be
-prepackaged with the robot controller app. If that is the case, then you can
-jump directly to the usage guidelines. If not, or if you're trying to use this
-library outisde of the FTC codebase (which is supported, acceptable, and
-encouraged!), you'll first want to follow the steps in the Installation section.
-You can then continue to the usage section, as above.
-
 ## Acknowledgements
 
 We would like to thank Aakanksha Chowdhery, Vivek Rathod, and Ronny Votel for
@@ -65,5 +65,5 @@ their help and support with TensorFlow Lite and the TensorFlow Object Detection
 API. We would also like to think David Konerding and Liz Looney for their
 mentorship throughout the development cycle. Finally, we would like to thank
 everyone involved in coordinating and participating in our data collection
-event, including Patricia Cruz, Aaron Cunningham, Nathan Mulcahey, Calvin
-Johnson, and FTC teams 8381, 11039, 12454, 12635, 12869, 13799.
+event, including Patricia Cruz, Aaron Cunningham, Calvin Johnson, Nathan
+Mulcahey, and FTC teams 8381, 11039, 12454, 12635, 12869, and 13799.
