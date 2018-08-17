@@ -23,6 +23,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.media.Image;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -47,7 +48,7 @@ import java.io.IOException;
 public class MainActivity extends AppCompatActivity {
 
   private static final String TAG = "MainActivity";
-  private static final String FRAME_GENERATOR_TYPE = "moving";
+  private static final String FRAME_GENERATOR_TYPE = "camera";
 
   private FrameGenerator frameGenerator;
   private TFObjectDetector tfod;
@@ -80,16 +81,12 @@ public class MainActivity extends AppCompatActivity {
     switch (FRAME_GENERATOR_TYPE) {
       case "static": // Static image
         {
-          final Bitmap bm = BitmapFactory.decodeResource(getResources(), R.raw.img_01290);
-          final Bitmap bmScaled = Bitmap.createScaledBitmap(bm, 1920, 1080, true);
-          frameGenerator = new ImageFrameGenerator(bmScaled);
+          frameGenerator = ImageFrameGenerator.makeFromResourceId(this, R.raw.img_01290);
           break;
         }
       case "moving": // Move an image around
         {
-          final Bitmap bm = BitmapFactory.decodeResource(getResources(), R.raw.img_01290);
-          final Bitmap bmScaled = Bitmap.createScaledBitmap(bm, 1920, 1080, true);
-          frameGenerator = new MovingImageFrameGenerator(bmScaled);
+          frameGenerator = MovingImageFrameGenerator.makeFromResourceId(this, R.raw.img_01290);
           break;
         }
       case "camera": // Try to use camera 1 api (via NativeCameraFrameGenerator)
@@ -168,12 +165,7 @@ public class MainActivity extends AppCompatActivity {
                       timer.end();
                     }));
 
-    try {
-      tfod.initialize(this);
-    } catch (IOException e) {
-      // Failure should crash the app
-      throw new RuntimeException("Could not initialize TFObjectDetector", e);
-    }
+    tfod.initialize(this);
   }
 
   @Override

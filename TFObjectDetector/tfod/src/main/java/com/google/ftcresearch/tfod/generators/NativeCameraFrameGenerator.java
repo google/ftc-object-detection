@@ -16,6 +16,7 @@
 
 package com.google.ftcresearch.tfod.generators;
 
+import android.app.Activity;
 import android.content.Context;
 import android.hardware.Camera;
 import android.support.annotation.NonNull;
@@ -27,22 +28,26 @@ import android.widget.FrameLayout;
 import com.google.ftcresearch.tfod.util.YuvRgbFrame;
 import com.google.ftcresearch.tfod.util.Size;
 
+import java.lang.annotation.Native;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NativeCameraFrameGenerator implements FrameGenerator {
 
   private static final String TAG = "NativeCameraGen";
 
-  private final Camera camera;
-  private final CameraPreview cameraPreview;
+  private Camera camera;
+  private CameraPreview cameraPreview;
+  private final AtomicBoolean cameraReleased = new AtomicBoolean(false);
 
-  private final Size cameraSize;
+  private Size cameraSize;
 
   private final BlockingQueue<YuvRgbFrame> frameQueue = new ArrayBlockingQueue<>(1);
 
@@ -80,44 +85,66 @@ public class NativeCameraFrameGenerator implements FrameGenerator {
     return aspectRatioPairs.get(0).second;
   }
 
-  public NativeCameraFrameGenerator(Context context, FrameLayout layout, int minSize, float aspectRatio) {
+  public NativeCameraFrameGenerator(Activity activity, FrameLayout layout, int minSize,
+                                    float aspectRatio) {
+
+
+    // Need to run this on the UI thread to ensure camera can be acquired and camera preview can
+    // be started, but this also needs to be synchronous, so use a latch to synchronize.
+    CountDownLatch initSignal = new CountDownLatch(1);
+
+    activity.runOnUiThread(() -> {
+      try {
+        camera = Camera.open();
+      } catch (Exception e) {
+        throw new RuntimeException("Unable to open camera", e);
+      }
+
+      if (camera == null) {
+        throw new RuntimeException("Created camera is null!");
+      }
+
+      // Just affects display orientation, not the actual byte order.
+      camera.setDisplayOrientation(90);
+
+      List<Camera.Size> cameraSizes = camera.getParameters().getSupportedPreviewSizes();
+      List<Size> sizes = new ArrayList<>();
+      for (Camera.Size size : cameraSizes) {
+        Log.d(TAG, String.format("Found camera size: (%d x %d)", size.width, size.height));
+        sizes.add(new Size(size.width, size.height));
+      }
+
+      cameraSize = getBestSize(sizes, minSize, aspectRatio);
+      Log.i(TAG, "Using camera size " + cameraSize);
+
+      Camera.Parameters parameters = camera.getParameters();
+      parameters.setPreviewSize(cameraSize.width, cameraSize.height);
+      camera.setParameters(parameters);
+
+      // Create our Preview view and set it as the content of our activity.
+      cameraPreview = new CameraPreview(activity, camera, cameraReleased);
+      layout.addView(cameraPreview);
+
+      initSignal.countDown();
+    });
 
     try {
-      camera = Camera.open();
-    } catch (Exception e) {
-      throw new RuntimeException("Unable to open camera", e);
+      initSignal.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("Exception while waiting for camera to initialize!", e);
     }
-
-    // Note that this only changes the preview, and does not affect the byte order passed into
-    // the callback.
-    camera.setDisplayOrientation(90);
-
-    List<Camera.Size> cameraSizes = camera.getParameters().getSupportedPreviewSizes();
-    List<Size> sizes = new ArrayList<>();
-    for (Camera.Size size : cameraSizes) {
-      Log.d(TAG, String.format("Found camera size: (%d x %d)", size.width, size.height));
-      sizes.add(new Size(size.width, size.height));
-    }
-
-    cameraSize = getBestSize(sizes, minSize, aspectRatio);
-    Log.i(TAG, "Using camera size " + cameraSize);
-
-    Camera.Parameters parameters = camera.getParameters();
-    parameters.setPreviewSize(cameraSize.width, cameraSize.height);
-    camera.setParameters(parameters);
-
-    // Create our Preview view and set it as the content of our activity.
-    cameraPreview = new CameraPreview(context, camera);
-    layout.addView(cameraPreview);
   }
 
   @Override
-  @NonNull public YuvRgbFrame getFrame() throws InterruptedException {
+  @NonNull
+  public YuvRgbFrame getFrame() throws InterruptedException {
     Log.v(TAG, "Getframe called");
 
     // Submit a callback, wait for it. If we don't get the callback soon enough, try again.
-    // Eventually, we'll get a frame, or die trying.
-    while (true) {
+    // Eventually, we'll get a frame, or give up and return an empty frame. In this case, we give
+    // up after a second of waiting.
+    for (int i = 0; i < 10; i++) {
       camera.setOneShotPreviewCallback((yuvBytes, cam) -> {
         ByteBuffer yuvData = ByteBuffer.wrap(yuvBytes);
         frameQueue.add(new YuvRgbFrame(yuvData, cameraSize, true));
@@ -128,10 +155,15 @@ public class NativeCameraFrameGenerator implements FrameGenerator {
         return frame;
       }
     }
+
+    return YuvRgbFrame.makeEmptyFrame(cameraSize);
   }
 
   @Override
   public void onDestroy() {
-
+    cameraReleased.set(true);
+    cameraPreview.hide();
+    camera.stopPreview();
+    camera.release();
   }
 }

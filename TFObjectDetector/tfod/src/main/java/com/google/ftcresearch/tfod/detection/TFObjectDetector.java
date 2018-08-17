@@ -17,6 +17,7 @@
 package com.google.ftcresearch.tfod.detection;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.Resources;
 import android.graphics.Canvas;
@@ -125,12 +126,12 @@ public class TFObjectDetector {
   }
 
   /** Memory-map the model file in Resources as read only */
-  private static MappedByteBuffer loadModel(Activity activity, String filename) throws IOException {
+  private static MappedByteBuffer loadModel(Context context, String filename) throws IOException {
 
-    final Resources res = activity.getResources();
+    final Resources res = context.getResources();
 
     int modelNameId =
-        res.getIdentifier(getFilenameWithoutExtension(filename), "raw", activity.getPackageName());
+        res.getIdentifier(getFilenameWithoutExtension(filename), "raw", context.getPackageName());
 
     AssetFileDescriptor fileDescriptor = res.openRawResourceFd(modelNameId);
 
@@ -164,14 +165,14 @@ public class TFObjectDetector {
    *   class B
    * </pre>
    * */
-  private static ArrayList<String> loadLabels(Activity activity, String filename)
+  private static ArrayList<String> loadLabels(Context context, String filename)
       throws IOException {
 
-    final Resources res = activity.getResources();
+    final Resources res = context.getResources();
     final ArrayList<String> labels = new ArrayList<>();
 
     int labelNameId =
-        res.getIdentifier(getFilenameWithoutExtension(filename), "raw", activity.getPackageName());
+        res.getIdentifier(getFilenameWithoutExtension(filename), "raw", context.getPackageName());
 
     try (BufferedReader br =
         new BufferedReader(new InputStreamReader(res.openRawResource(labelNameId),
@@ -187,14 +188,14 @@ public class TFObjectDetector {
   }
 
   /** Load the models and labels, and create as many interpreters as necessary. */
-  private void loadResources(Activity activity) throws IOException {
+  private void loadResources(Context context) throws IOException {
 
     Log.i(TAG, "Loading the labels.");
-    labels = loadLabels(activity, params.labelName);
+    labels = loadLabels(context, params.labelName);
 
     Log.i(TAG, "Loading the interpreters.");
 
-    final MappedByteBuffer modelData = loadModel(activity, params.modelName);
+    final MappedByteBuffer modelData = loadModel(context, params.modelName);
     interpreters = new ArrayList<>();
 
     for (int i = 0; i < params.numExecutorThreads; i++) {
@@ -202,10 +203,20 @@ public class TFObjectDetector {
     }
   }
 
-  // TODO(vasuagrawal): Figure out if this should be a Context instead of an Activity
-  public void initialize(Activity activity) throws IOException {
+  /**
+   * Initialize the TFObjectDetector, and start getting recognitions.
+   *
+   * This method attempts to load all resources, throwing an IOException if unable to. Then, a
+   * background thread is created to constantly pull frames from the FrameGenerator and find
+   * objects inside them. The thread is started as a part of this method, so recognitions will
+   * start to be available shortly after this method is called.
+   *
+   * @param context Context which is able to load resources.
+   * @throws IOException Exception thrown if resources can't be loaded.
+   */
+  public void checkedInitialize(Context context) throws IOException {
     Log.i(TAG, "TFOD thread name: " + Thread.currentThread().getName());
-    loadResources(activity);
+    loadResources(context);
 
     // Create a TfodFrameManager, which handles feeding tasks to the executor. Each task consists
     // of processing a single camera frame, passing it through the model (via the interpreter),
@@ -232,6 +243,18 @@ public class TFObjectDetector {
     frameManagerThread.start();
   }
 
+  /**
+   * Convenience wrapper around checkedInitialize() to throw a RuntimeException instead.
+   * @param context Context which is able to load resources.
+   */
+  public void initialize(Context context) {
+    try {
+      checkedInitialize(context);
+    } catch (IOException e) {
+      throw new RuntimeException("IOException while initializing", e);
+    }
+  }
+
   /** Perform whatever cleanup is necessary to release all acquired resources.
    *
    * <p> Note: TFObjectDetector does not claim ownership of the FrameGenerator. As such,
@@ -242,26 +265,21 @@ public class TFObjectDetector {
   }
 
   /**
-   * Take the most up to date annotatedYuvRgbFrame available, blocking if there isn't one.
+   * Get the most recent AnnotatedYuvRgbFrame available, at a maximum predetermined frame rate.
    *
-   * <p>If tracking is enabled, the recognitions will always be from the most recent frame
-   * processed by the tracker. If tracking is disabled, the recognitions will correspond to the
-   * most recent frame processed by the model. There is currently no way to receive the raw
-   * recognitions from the model if tracking is enabled.
+   * Internally, the library gets frames asynchronously. To help clients behave more predictibly,
+   * this function makes the most recent frame received by the library available at a specified
+   * frame rate. If the requested frame rate is higher than the rate at which the library is
+   * receiving frames, the same frame will be returned multiple times.
    *
-   * <p>If this method is called multiple times without the TFObjectDetector receiving a new
-   * detection, the object returned will be the same. In this case, the client is free to modify the
-   * returned object, as the TFObjectDetector promises to not modify the annotatedYuvRgbFrame.
+   * The client is free to modify the contents of the AnnotatedYuvRgbFrame. However, note that
+   * any changes will persist if the same frame is returned multiple times by this method.
    *
-   * This method may internally sleep if it is being called too quickly. The maximum frame rate
-   * at which this function will return is determined by the maxFrameRate parameter. That is, if
-   * returning immediately would violate the maxFrameRate (last return was too recent), this
-   * method will sleep to correct the time difference. The sleep is checked internally, so this
-   * method does not throw. Rather, the interrupted flag is set upon interruption.
+   * This method will never return a null frame, since a frame is acquired during initialization.
    *
-   * @return A list of the most recent recognitions available.
+   * @return Newest available AnnotatedYuvRgbFrame.
    */
-  public @NonNull AnnotatedYuvRgbFrame takeAnnotatedFrame() {
+  public @NonNull AnnotatedYuvRgbFrame getAnnotatedFrameAtRate() {
     rate.sleep();
 
     synchronized (annotatedFrameLock) {
