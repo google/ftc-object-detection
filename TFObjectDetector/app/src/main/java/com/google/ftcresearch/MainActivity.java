@@ -32,6 +32,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 
 import com.google.ftcresearch.tfod.util.Recognition;
 import com.google.ftcresearch.tfod.detection.TFObjectDetector;
@@ -48,7 +49,7 @@ import java.io.IOException;
 public class MainActivity extends AppCompatActivity {
 
   private static final String TAG = "MainActivity";
-  private static final String FRAME_GENERATOR_TYPE = "camera";
+  private static final String FRAME_GENERATOR_TYPE = "moving";
 
   private FrameGenerator frameGenerator;
   private TFObjectDetector tfod;
@@ -91,8 +92,8 @@ public class MainActivity extends AppCompatActivity {
         }
       case "camera": // Try to use camera 1 api (via NativeCameraFrameGenerator)
         {
-          FrameLayout preview = (FrameLayout) findViewById(R.id.frameLayout);
-          frameGenerator = new NativeCameraFrameGenerator(this, preview, 300, 1920.0f / 1080.0f);
+          frameGenerator = new NativeCameraFrameGenerator(this, R.id.bottom_frame, 300,
+              1920.0f / 1080.0f);
           break;
         }
       default:
@@ -120,13 +121,12 @@ public class MainActivity extends AppCompatActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
 
-    final boolean permissionGranted;
+    setContentView(R.layout.activity_linear);
 
+    final boolean permissionGranted;
     if (FRAME_GENERATOR_TYPE.equals("camera")) {
-      setContentView(R.layout.activity_camera);
       permissionGranted = requestCameraPermission();
     } else {
-      setContentView(R.layout.activity_main);
       permissionGranted = true;
     }
 
@@ -145,25 +145,9 @@ public class MainActivity extends AppCompatActivity {
                 .numExecutorThreads(4)
                 .numInterpreterThreads(1)
 //                .trackerDisable(true)
+                .drawRecognitionsEnable(R.id.top_frame)
                 .build(),
-            frameGenerator,
-            (annotatedFrame) ->
-                runOnUiThread(
-                    () -> {
-                      final YuvRgbFrame frame = annotatedFrame.getFrame();
-                      Bitmap canvasBitmap = frame.getCopiedBitmap();
-
-                      timer.start("Create canvas and draw debug");
-                      Canvas canvas = new Canvas(canvasBitmap);
-                      tfod.drawDebug(canvas);
-                      timer.end();
-
-                      timer.start("Final render onto the screen");
-                      Log.v(TAG, "Drawing a new frame!");
-                      ImageView im = (ImageView) findViewById(R.id.detection_window);
-                      im.setImageBitmap(canvasBitmap);
-                      timer.end();
-                    }));
+            frameGenerator);
 
     tfod.initialize(this);
   }

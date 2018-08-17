@@ -19,9 +19,11 @@ package com.google.ftcresearch.tfod.generators;
 import android.app.Activity;
 import android.content.Context;
 import android.hardware.Camera;
+import android.support.annotation.LayoutRes;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.Pair;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 
@@ -44,6 +46,7 @@ public class NativeCameraFrameGenerator implements FrameGenerator {
   private static final String TAG = "NativeCameraGen";
 
   private Camera camera;
+  private ViewGroup cameraPreviewLayout;
   private CameraPreview cameraPreview;
   private final AtomicBoolean cameraReleased = new AtomicBoolean(false);
 
@@ -85,9 +88,13 @@ public class NativeCameraFrameGenerator implements FrameGenerator {
     return aspectRatioPairs.get(0).second;
   }
 
-  public NativeCameraFrameGenerator(Activity activity, FrameLayout layout, int minSize,
+  public NativeCameraFrameGenerator(Activity activity, int previewLayoutId, int minSize,
                                     float aspectRatio) {
 
+    cameraPreviewLayout = activity.findViewById(previewLayoutId);
+    if (cameraPreviewLayout == null) {
+      throw new IllegalArgumentException("Invalid layout ID specified!");
+    }
 
     // Need to run this on the UI thread to ensure camera can be acquired and camera preview can
     // be started, but this also needs to be synchronous, so use a latch to synchronize.
@@ -123,7 +130,15 @@ public class NativeCameraFrameGenerator implements FrameGenerator {
 
       // Create our Preview view and set it as the content of our activity.
       cameraPreview = new CameraPreview(activity, camera, cameraReleased);
-      layout.addView(cameraPreview);
+      cameraPreviewLayout.addView(cameraPreview);
+
+      // TODO(vasuagrawal): Figure out the right way to set height here.
+      // Also, figure out how to make this work better for horizontal layouts.
+      ViewGroup.LayoutParams viewParams = cameraPreview.getLayoutParams();
+      viewParams.height = 800;
+      cameraPreview.setLayoutParams(viewParams);
+
+      cameraPreviewLayout.postInvalidate();
 
       initSignal.countDown();
     });
@@ -161,9 +176,10 @@ public class NativeCameraFrameGenerator implements FrameGenerator {
 
   @Override
   public void onDestroy() {
-    cameraReleased.set(true);
-    cameraPreview.hide();
-    camera.stopPreview();
-    camera.release();
+    cameraPreviewLayout.removeView(cameraPreview);
+//    cameraReleased.set(true);
+//    cameraPreview.hide();
+//    camera.stopPreview();
+//    camera.release();
   }
 }

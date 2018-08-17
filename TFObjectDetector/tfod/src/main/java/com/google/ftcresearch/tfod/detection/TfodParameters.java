@@ -156,6 +156,19 @@ public class TfodParameters {
    */
   public final Size trackerFrameSize;
 
+  /**
+   * Whether to draw the recognitions onto the screen.
+   *
+   * Recognitions will be drawn as fast as new frames are received, so each frame will only be
+   * drawn once.
+   */
+  public final boolean drawRecognitions;
+
+  /**
+   * View ID for the layout to draw recognitions into.
+   */
+  public final int drawLayoutId;
+
   // Private constructor to force clients to use the Builder and get proper argument verification
   private TfodParameters(
       String modelName,
@@ -174,7 +187,9 @@ public class TfodParameters {
       float trackerMinCorrelation,
       boolean trackerDisable,
       boolean trackerFrameResizeEnable,
-      Size trackerSize) {
+      Size trackerSize,
+      boolean drawRecognitions,
+      int drawLayoutId) {
     this.modelName = modelName;
     this.labelName = labelName;
     this.isModelQuantized = isModelQuantized;
@@ -192,6 +207,8 @@ public class TfodParameters {
     this.trackerDisable = trackerDisable;
     this.trackerFrameResizeEnable = trackerFrameResizeEnable;
     this.trackerFrameSize = trackerSize;
+    this.drawRecognitions = drawRecognitions;
+    this.drawLayoutId = drawLayoutId;
   }
 
   public static class Builder {
@@ -219,6 +236,9 @@ public class TfodParameters {
     private boolean trackerDisable = false;
     private boolean trackerFrameResizeEnable = true;
     private Size trackerFrameSize = new Size(576, 324);
+
+    private boolean drawRecognitions = false;
+    private int drawLayoutId = -1;
 
     /** Default constructor to use the model included in the library. */
     public Builder() {}
@@ -318,6 +338,14 @@ public class TfodParameters {
       return this;
     }
 
+    public Builder drawRecognitionsEnable(int drawLayoutId) {
+      // Note that this method sets both drawRecognitions and drawLayoutId, since they both need
+      // to be initialized, as there are no reasonable defaults that can be provided.
+      this.drawRecognitions = true;
+      this.drawLayoutId = drawLayoutId;
+      return this;
+    }
+
     public TfodParameters build() {
       return new TfodParameters(
           modelName,
@@ -336,7 +364,9 @@ public class TfodParameters {
           trackerMinCorrelation,
           trackerDisable,
           trackerFrameResizeEnable,
-          trackerFrameSize);
+          trackerFrameSize,
+          drawRecognitions,
+          drawLayoutId);
     }
   }
 }

@@ -20,10 +20,15 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Build;
 import android.support.annotation.NonNull;
+import android.text.Layout;
 import android.util.Log;
+import android.view.ViewGroup;
+import android.view.ViewParent;
+import android.widget.ImageView;
 
 import com.google.ftcresearch.tfod.generators.FrameGenerator;
 import com.google.ftcresearch.tfod.util.AnnotatedYuvRgbFrame;
@@ -41,6 +46,9 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+
+import static android.view.ViewGroup.LayoutParams.FILL_PARENT;
+import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
 /**
  * Class to convert object detection and tracking system into a simple interface.
@@ -63,6 +71,9 @@ public class TFObjectDetector {
   private final TfodParameters params;
   private final FrameGenerator frameGenerator;
   private final AnnotatedFrameCallback clientCallback;
+
+  private ViewGroup imageViewLayout;
+  private ImageView imageView;
 
   // Parameters created when loading the models.
   // TODO(vasuagrawal): Modify loading so that these fields can be final.
@@ -211,12 +222,30 @@ public class TFObjectDetector {
    * objects inside them. The thread is started as a part of this method, so recognitions will
    * start to be available shortly after this method is called.
    *
-   * @param context Context which is able to load resources.
+   * @param activity Activty which is able to load resources.
    * @throws IOException Exception thrown if resources can't be loaded.
    */
-  public void checkedInitialize(Context context) throws IOException {
+  public void checkedInitialize(Activity activity) throws IOException, IllegalArgumentException {
     Log.i(TAG, "TFOD thread name: " + Thread.currentThread().getName());
-    loadResources(context);
+    loadResources(activity);
+
+    // Create an ImageView to draw to the screen, if requested.
+    if (params.drawRecognitions) {
+      imageViewLayout = activity.findViewById(params.drawLayoutId);
+      if (imageViewLayout == null) {
+        throw new IllegalArgumentException("Unable to open view group to draw frame. The resource" +
+            " ID is likely incorrect!");
+      }
+
+      imageView = new ImageView(activity);
+      imageViewLayout.addView(imageView);
+
+      ViewGroup.LayoutParams layoutParams = imageView.getLayoutParams();
+      layoutParams.width = MATCH_PARENT;
+      imageView.setLayoutParams(layoutParams);
+
+      imageViewLayout.postInvalidate();
+    }
 
     // Create a TfodFrameManager, which handles feeding tasks to the executor. Each task consists
     // of processing a single camera frame, passing it through the model (via the interpreter),
@@ -233,6 +262,18 @@ public class TFObjectDetector {
               // holding the lock forever.
               clientCallback.onResult(receivedAnnotatedFrame);
 
+              if (params.drawRecognitions) {
+                // Draw recognitions onto the screen, simplifying the user's job.
+                final YuvRgbFrame frame = receivedAnnotatedFrame.getFrame();
+                final Bitmap canvasBitmap = frame.getCopiedBitmap();
+                final Canvas canvas = new Canvas(canvasBitmap);
+                drawDebug(canvas);
+
+                activity.runOnUiThread(() -> {
+                  imageView.setImageBitmap(canvasBitmap);
+                });
+              }
+
               synchronized (annotatedFrameLock) {
                 Log.v(TAG, "Frame change: setting a new annotatedFrame");
                 annotatedFrame = receivedAnnotatedFrame;
@@ -245,11 +286,11 @@ public class TFObjectDetector {
 
   /**
    * Convenience wrapper around checkedInitialize() to throw a RuntimeException instead.
-   * @param context Context which is able to load resources.
+   * @param activity Activty which is able to load resources.
    */
-  public void initialize(Context context) {
+  public void initialize(Activity activity) {
     try {
-      checkedInitialize(context);
+      checkedInitialize(activity);
     } catch (IOException e) {
       throw new RuntimeException("IOException while initializing", e);
     }
@@ -262,6 +303,11 @@ public class TFObjectDetector {
    */
   public void shutdown() {
     frameManagerThread.interrupt();
+
+    // If we've been asked to draw to the screen, remove the image view.
+    if (params.drawRecognitions) {
+      imageViewLayout.removeView(imageView);
+    }
   }
 
   /**
