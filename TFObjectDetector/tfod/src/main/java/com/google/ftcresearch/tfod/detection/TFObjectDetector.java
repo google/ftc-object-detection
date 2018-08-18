@@ -24,10 +24,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Build;
 import android.support.annotation.NonNull;
-import android.text.Layout;
 import android.util.Log;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.widget.ImageView;
 
 import com.google.ftcresearch.tfod.generators.FrameGenerator;
@@ -46,8 +44,8 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
-import static android.view.ViewGroup.LayoutParams.FILL_PARENT;
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
 /**
@@ -102,6 +100,24 @@ public class TFObjectDetector {
     // To comply with FTC min version, throw an exception if the android version is less than 23.
     // This allows the library to be available on all devices, but only actually usable in 6.0+.
     return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M;
+  }
+
+  public static void runOnUiThreadAndWait(Activity activity, Runnable runnable) {
+    // Need to run this on the UI thread to ensure camera can be acquired and camera preview can
+    // be started, but this also needs to be synchronous, so use a latch to synchronize.
+    CountDownLatch initSignal = new CountDownLatch(1);
+
+    activity.runOnUiThread(() -> {
+      runnable.run();
+      initSignal.countDown();
+    });
+
+    try {
+      initSignal.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("Exception while waiting to run task on UI thread!", e);
+    }
   }
 
   public TFObjectDetector(TfodParameters params, FrameGenerator frameGenerator) {
@@ -238,13 +254,16 @@ public class TFObjectDetector {
       }
 
       imageView = new ImageView(activity);
-      imageViewLayout.addView(imageView);
 
-      ViewGroup.LayoutParams layoutParams = imageView.getLayoutParams();
-      layoutParams.width = MATCH_PARENT;
-      imageView.setLayoutParams(layoutParams);
+      runOnUiThreadAndWait(activity, () ->  {
+        imageViewLayout.addView(imageView);
 
-      imageViewLayout.postInvalidate();
+        ViewGroup.LayoutParams layoutParams = imageView.getLayoutParams();
+        layoutParams.width = MATCH_PARENT;
+        imageView.setLayoutParams(layoutParams);
+
+        imageViewLayout.invalidate();
+      });
     }
 
     // Create a TfodFrameManager, which handles feeding tasks to the executor. Each task consists
@@ -301,12 +320,16 @@ public class TFObjectDetector {
    * <p> Note: TFObjectDetector does not claim ownership of the FrameGenerator. As such,
    * any responsibility for its cleanup will be on the caller, not the TFObjectDetector.
    */
-  public void shutdown() {
+  public void shutdown(Activity activity) {
     frameManagerThread.interrupt();
 
     // If we've been asked to draw to the screen, remove the image view.
     if (params.drawRecognitions) {
-      imageViewLayout.removeView(imageView);
+      Log.i(TAG, "Removing recognitions view");
+
+      runOnUiThreadAndWait(activity, () -> {
+        imageViewLayout.removeView(imageView);
+      });
     }
   }
 

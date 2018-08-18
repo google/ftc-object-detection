@@ -16,6 +16,7 @@
 
 package com.google.ftcresearch.tfod.generators;
 
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -116,7 +117,7 @@ public class MovingImageFrameGenerator implements FrameGenerator {
   }
 
   @Override
-  public void onDestroy() {
+  public void onDestroy(Activity activity) {
 
   }
 

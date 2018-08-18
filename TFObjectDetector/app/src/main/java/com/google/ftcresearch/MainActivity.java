@@ -49,7 +49,7 @@ import java.io.IOException;
 public class MainActivity extends AppCompatActivity {
 
   private static final String TAG = "MainActivity";
-  private static final String FRAME_GENERATOR_TYPE = "moving";
+  private static final String FRAME_GENERATOR_TYPE = "camera";
 
   private FrameGenerator frameGenerator;
   private TFObjectDetector tfod;
@@ -159,12 +159,12 @@ public class MainActivity extends AppCompatActivity {
 
     if (tfod != null) {
       Log.i(TAG, "Shutting down tfod");
-      tfod.shutdown();
+      tfod.shutdown(this);
     }
 
     // tfod doesn't shut down the frame generator, so we do that ourselves.
     if (frameGenerator != null) {
-      frameGenerator.onDestroy();
+      frameGenerator.onDestroy(this);
     }
   }
 }

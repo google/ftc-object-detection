@@ -17,27 +17,22 @@
 package com.google.ftcresearch.tfod.generators;
 
 import android.app.Activity;
-import android.content.Context;
 import android.hardware.Camera;
-import android.support.annotation.LayoutRes;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.Pair;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
 
-
-import com.google.ftcresearch.tfod.util.YuvRgbFrame;
+import com.google.ftcresearch.tfod.detection.TFObjectDetector;
 import com.google.ftcresearch.tfod.util.Size;
+import com.google.ftcresearch.tfod.util.YuvRgbFrame;
 
-import java.lang.annotation.Native;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -96,11 +91,7 @@ public class NativeCameraFrameGenerator implements FrameGenerator {
       throw new IllegalArgumentException("Invalid layout ID specified!");
     }
 
-    // Need to run this on the UI thread to ensure camera can be acquired and camera preview can
-    // be started, but this also needs to be synchronous, so use a latch to synchronize.
-    CountDownLatch initSignal = new CountDownLatch(1);
-
-    activity.runOnUiThread(() -> {
+    TFObjectDetector.runOnUiThreadAndWait(activity, () -> {
       try {
         camera = Camera.open();
       } catch (Exception e) {
@@ -138,17 +129,8 @@ public class NativeCameraFrameGenerator implements FrameGenerator {
       viewParams.height = 800;
       cameraPreview.setLayoutParams(viewParams);
 
-      cameraPreviewLayout.postInvalidate();
-
-      initSignal.countDown();
+      cameraPreviewLayout.invalidate();
     });
-
-    try {
-      initSignal.await();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new RuntimeException("Exception while waiting for camera to initialize!", e);
-    }
   }
 
   @Override
@@ -175,11 +157,14 @@ public class NativeCameraFrameGenerator implements FrameGenerator {
   }
 
   @Override
-  public void onDestroy() {
-    cameraPreviewLayout.removeView(cameraPreview);
-//    cameraReleased.set(true);
-//    cameraPreview.hide();
-//    camera.stopPreview();
-//    camera.release();
+  public void onDestroy(Activity activity) {
+    // TODO(vasuagrawal): Verify that this actually removes the view in FTC code.
+
+    TFObjectDetector.runOnUiThreadAndWait(activity, () -> {
+      camera.stopPreview();
+      cameraPreviewLayout.removeView(cameraPreview);
+    });
+
+    camera.release();
   }
 }
