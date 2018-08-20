@@ -16,7 +16,10 @@
 
 package com.google.ftcresearch.tfod.generators;
 
+import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.support.annotation.NonNull;
 import android.util.Log;
 
@@ -114,7 +117,13 @@ public class MovingImageFrameGenerator implements FrameGenerator {
   }
 
   @Override
-  public void onDestroy() {
+  public void onDestroy(Activity activity) {
 
+  }
+
+  public static MovingImageFrameGenerator makeFromResourceId(Context context, int resourceId) {
+    final Bitmap bm = BitmapFactory.decodeResource(context.getResources(), resourceId);
+    final Bitmap bmScaled = Bitmap.createScaledBitmap(bm, 1920, 1080, true);
+    return new MovingImageFrameGenerator(bmScaled);
   }
 }

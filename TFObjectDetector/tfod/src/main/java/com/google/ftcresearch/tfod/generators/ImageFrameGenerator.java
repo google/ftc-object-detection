@@ -16,11 +16,16 @@
 
 package com.google.ftcresearch.tfod.generators;
 
+import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.media.Image;
 import android.support.annotation.NonNull;
 import android.util.Log;
 
 
+import com.google.ftcresearch.tfod.R;
 import com.google.ftcresearch.tfod.util.Rate;
 import com.google.ftcresearch.tfod.util.YuvRgbFrame;
 import com.google.ftcresearch.tfod.util.Size;
@@ -70,7 +75,14 @@ public class ImageFrameGenerator implements FrameGenerator {
   }
 
   @Override
-  public void onDestroy() {
+  public void onDestroy(Activity activity) {
 
+  }
+
+  /** Convenience method to handle loading bitmap from a resource id. */
+  public static ImageFrameGenerator makeFromResourceId(Context context, int resourceId) {
+    final Bitmap bm = BitmapFactory.decodeResource(context.getResources(), resourceId);
+    final Bitmap bmScaled = Bitmap.createScaledBitmap(bm, 1920, 1080, true);
+    return new ImageFrameGenerator(bmScaled);
   }
 }

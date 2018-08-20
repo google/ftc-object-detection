@@ -23,6 +23,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A basic Camera preview class, largely from the example:
@@ -33,10 +34,12 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
 
   private final SurfaceHolder holder;
   private final Camera camera;
+  private final AtomicBoolean cameraReleased;
 
-  public CameraPreview(Context context, Camera camera) {
+  public CameraPreview(Context context, Camera camera, AtomicBoolean cameraReleased) {
     super(context);
     this.camera = camera;
+    this.cameraReleased = cameraReleased;
 
     // Install a SurfaceHolder.Callback so we get notified when the
     // underlying surface is created and destroyed.
@@ -48,8 +51,10 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
 
   private void startCamera(SurfaceHolder holder) {
     try {
-      camera.setPreviewDisplay(holder);
-      camera.startPreview();
+      if (!cameraReleased.get()) {
+        camera.setPreviewDisplay(holder);
+        camera.startPreview();
+      }
     } catch (IOException e) {
       Log.e(TAG, "Error setting up camera preview", e);
     }
@@ -57,7 +62,9 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
 
   private void stopCamera() {
     try {
-      camera.stopPreview();
+      if (!cameraReleased.get()) {
+        camera.stopPreview();
+      }
     } catch (Exception e) {
       // Doesn't matter, camera is stopped.
     }
@@ -84,5 +91,10 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
 
     stopCamera();
     startCamera(holder);
+  }
+
+  public void hide() {
+    this.setVisibility(GONE);
+    this.postInvalidate();
   }
 }

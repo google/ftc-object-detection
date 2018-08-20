@@ -23,6 +23,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.media.Image;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -31,6 +32,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 
 import com.google.ftcresearch.tfod.util.Recognition;
 import com.google.ftcresearch.tfod.detection.TFObjectDetector;
@@ -47,7 +49,7 @@ import java.io.IOException;
 public class MainActivity extends AppCompatActivity {
 
   private static final String TAG = "MainActivity";
-  private static final String FRAME_GENERATOR_TYPE = "moving";
+  private static final String FRAME_GENERATOR_TYPE = "camera";
 
   private FrameGenerator frameGenerator;
   private TFObjectDetector tfod;
@@ -80,22 +82,18 @@ public class MainActivity extends AppCompatActivity {
     switch (FRAME_GENERATOR_TYPE) {
       case "static": // Static image
         {
-          final Bitmap bm = BitmapFactory.decodeResource(getResources(), R.raw.img_01290);
-          final Bitmap bmScaled = Bitmap.createScaledBitmap(bm, 1920, 1080, true);
-          frameGenerator = new ImageFrameGenerator(bmScaled);
+          frameGenerator = ImageFrameGenerator.makeFromResourceId(this, R.raw.img_01290);
           break;
         }
       case "moving": // Move an image around
         {
-          final Bitmap bm = BitmapFactory.decodeResource(getResources(), R.raw.img_01290);
-          final Bitmap bmScaled = Bitmap.createScaledBitmap(bm, 1920, 1080, true);
-          frameGenerator = new MovingImageFrameGenerator(bmScaled);
+          frameGenerator = MovingImageFrameGenerator.makeFromResourceId(this, R.raw.img_01290);
           break;
         }
       case "camera": // Try to use camera 1 api (via NativeCameraFrameGenerator)
         {
-          FrameLayout preview = (FrameLayout) findViewById(R.id.frameLayout);
-          frameGenerator = new NativeCameraFrameGenerator(this, preview, 300, 1920.0f / 1080.0f);
+          frameGenerator = new NativeCameraFrameGenerator(this, R.id.bottom_frame, 300,
+              1920.0f / 1080.0f);
           break;
         }
       default:
@@ -123,13 +121,12 @@ public class MainActivity extends AppCompatActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
 
-    final boolean permissionGranted;
+    setContentView(R.layout.activity_linear);
 
+    final boolean permissionGranted;
     if (FRAME_GENERATOR_TYPE.equals("camera")) {
-      setContentView(R.layout.activity_camera);
       permissionGranted = requestCameraPermission();
     } else {
-      setContentView(R.layout.activity_main);
       permissionGranted = true;
     }
 
@@ -148,32 +145,11 @@ public class MainActivity extends AppCompatActivity {
                 .numExecutorThreads(4)
                 .numInterpreterThreads(1)
 //                .trackerDisable(true)
+                .drawRecognitionsEnable(R.id.top_frame)
                 .build(),
-            frameGenerator,
-            (annotatedFrame) ->
-                runOnUiThread(
-                    () -> {
-                      final YuvRgbFrame frame = annotatedFrame.getFrame();
-                      Bitmap canvasBitmap = frame.getCopiedBitmap();
+            frameGenerator);
 
-                      timer.start("Create canvas and draw debug");
-                      Canvas canvas = new Canvas(canvasBitmap);
-                      tfod.drawDebug(canvas);
-                      timer.end();
-
-                      timer.start("Final render onto the screen");
-                      Log.v(TAG, "Drawing a new frame!");
-                      ImageView im = (ImageView) findViewById(R.id.detection_window);
-                      im.setImageBitmap(canvasBitmap);
-                      timer.end();
-                    }));
-
-    try {
-      tfod.initialize(this);
-    } catch (IOException e) {
-      // Failure should crash the app
-      throw new RuntimeException("Could not initialize TFObjectDetector", e);
-    }
+    tfod.initialize(this);
   }
 
   @Override
@@ -183,12 +159,12 @@ public class MainActivity extends AppCompatActivity {
 
     if (tfod != null) {
       Log.i(TAG, "Shutting down tfod");
-      tfod.shutdown();
+      tfod.shutdown(this);
     }
 
     // tfod doesn't shut down the frame generator, so we do that ourselves.
     if (frameGenerator != null) {
-      frameGenerator.onDestroy();
+      frameGenerator.onDestroy(this);
     }
   }
 }

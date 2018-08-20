@@ -16,16 +16,16 @@
 
 package com.google.ftcresearch.tfod.generators;
 
-import android.content.Context;
+import android.app.Activity;
 import android.hardware.Camera;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.Pair;
-import android.widget.FrameLayout;
+import android.view.ViewGroup;
 
-
-import com.google.ftcresearch.tfod.util.YuvRgbFrame;
+import com.google.ftcresearch.tfod.detection.TFObjectDetector;
 import com.google.ftcresearch.tfod.util.Size;
+import com.google.ftcresearch.tfod.util.YuvRgbFrame;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -34,15 +34,18 @@ import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NativeCameraFrameGenerator implements FrameGenerator {
 
   private static final String TAG = "NativeCameraGen";
 
-  private final Camera camera;
-  private final CameraPreview cameraPreview;
+  private Camera camera;
+  private ViewGroup cameraPreviewLayout;
+  private CameraPreview cameraPreview;
+  private final AtomicBoolean cameraReleased = new AtomicBoolean(false);
 
-  private final Size cameraSize;
+  private Size cameraSize;
 
   private final BlockingQueue<YuvRgbFrame> frameQueue = new ArrayBlockingQueue<>(1);
 
@@ -80,44 +83,65 @@ public class NativeCameraFrameGenerator implements FrameGenerator {
     return aspectRatioPairs.get(0).second;
   }
 
-  public NativeCameraFrameGenerator(Context context, FrameLayout layout, int minSize, float aspectRatio) {
+  public NativeCameraFrameGenerator(Activity activity, int previewLayoutId, int minSize,
+                                    float aspectRatio) {
 
-    try {
-      camera = Camera.open();
-    } catch (Exception e) {
-      throw new RuntimeException("Unable to open camera", e);
+    cameraPreviewLayout = activity.findViewById(previewLayoutId);
+    if (cameraPreviewLayout == null) {
+      throw new IllegalArgumentException("Invalid layout ID specified!");
     }
 
-    // Note that this only changes the preview, and does not affect the byte order passed into
-    // the callback.
-    camera.setDisplayOrientation(90);
+    TFObjectDetector.runOnUiThreadAndWait(activity, () -> {
+      try {
+        camera = Camera.open();
+      } catch (Exception e) {
+        throw new RuntimeException("Unable to open camera", e);
+      }
 
-    List<Camera.Size> cameraSizes = camera.getParameters().getSupportedPreviewSizes();
-    List<Size> sizes = new ArrayList<>();
-    for (Camera.Size size : cameraSizes) {
-      Log.d(TAG, String.format("Found camera size: (%d x %d)", size.width, size.height));
-      sizes.add(new Size(size.width, size.height));
-    }
+      if (camera == null) {
+        throw new RuntimeException("Created camera is null!");
+      }
 
-    cameraSize = getBestSize(sizes, minSize, aspectRatio);
-    Log.i(TAG, "Using camera size " + cameraSize);
+      // Just affects display orientation, not the actual byte order.
+      camera.setDisplayOrientation(90);
 
-    Camera.Parameters parameters = camera.getParameters();
-    parameters.setPreviewSize(cameraSize.width, cameraSize.height);
-    camera.setParameters(parameters);
+      List<Camera.Size> cameraSizes = camera.getParameters().getSupportedPreviewSizes();
+      List<Size> sizes = new ArrayList<>();
+      for (Camera.Size size : cameraSizes) {
+        Log.d(TAG, String.format("Found camera size: (%d x %d)", size.width, size.height));
+        sizes.add(new Size(size.width, size.height));
+      }
 
-    // Create our Preview view and set it as the content of our activity.
-    cameraPreview = new CameraPreview(context, camera);
-    layout.addView(cameraPreview);
+      cameraSize = getBestSize(sizes, minSize, aspectRatio);
+      Log.i(TAG, "Using camera size " + cameraSize);
+
+      Camera.Parameters parameters = camera.getParameters();
+      parameters.setPreviewSize(cameraSize.width, cameraSize.height);
+      camera.setParameters(parameters);
+
+      // Create our Preview view and set it as the content of our activity.
+      cameraPreview = new CameraPreview(activity, camera, cameraReleased);
+      cameraPreviewLayout.addView(cameraPreview);
+
+      // TODO(vasuagrawal): Figure out the right way to set height here.
+      // Also, figure out how to make this work better for horizontal layouts.
+      ViewGroup.LayoutParams viewParams = cameraPreview.getLayoutParams();
+      viewParams.height = 800;
+      cameraPreview.setLayoutParams(viewParams);
+
+      cameraPreviewLayout.invalidate();
+    });
   }
 
   @Override
-  @NonNull public YuvRgbFrame getFrame() throws InterruptedException {
+  @NonNull
+  public YuvRgbFrame getFrame() throws InterruptedException {
     Log.v(TAG, "Getframe called");
 
     // Submit a callback, wait for it. If we don't get the callback soon enough, try again.
-    // Eventually, we'll get a frame, or die trying.
-    while (true) {
+    // Eventually, we'll get a frame, or give up and return an empty frame. In this case, we give
+    // up after a second of waiting.
+    for (int i = 0; i < 10; i++) {
       camera.setOneShotPreviewCallback((yuvBytes, cam) -> {
         ByteBuffer yuvData = ByteBuffer.wrap(yuvBytes);
         frameQueue.add(new YuvRgbFrame(yuvData, cameraSize, true));
@@ -128,10 +152,19 @@ public class NativeCameraFrameGenerator implements FrameGenerator {
         return frame;
       }
     }
+
+    return YuvRgbFrame.makeEmptyFrame(cameraSize);
   }
 
   @Override
-  public void onDestroy() {
+  public void onDestroy(Activity activity) {
+    // TODO(vasuagrawal): Verify that this actually removes the view in FTC code.
 
+    TFObjectDetector.runOnUiThreadAndWait(activity, () -> {
+      camera.stopPreview();
+      cameraPreviewLayout.removeView(cameraPreview);
+    });
+
+    camera.release();
   }
 }

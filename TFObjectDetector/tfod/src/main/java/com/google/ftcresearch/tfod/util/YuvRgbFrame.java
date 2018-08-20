@@ -285,4 +285,9 @@ public class YuvRgbFrame {
     timer.end();
     return yuvRgbFrame;
   }
+
+  public static YuvRgbFrame makeEmptyFrame(Size size) {
+    IntBuffer rgbFrame = IntBuffer.allocate(size.width * size.height);
+    return new YuvRgbFrame(rgbFrame, size);
+  }
 }

@@ -16,6 +16,7 @@
 
 package com.google.ftcresearch.tfod.generators;
 
+import android.app.Activity;
 import android.support.annotation.NonNull;
 
 import com.google.ftcresearch.tfod.util.YuvRgbFrame;
@@ -36,5 +37,5 @@ public interface FrameGenerator {
   @NonNull YuvRgbFrame getFrame() throws InterruptedException;
 
   /** Method to serve as a destructor to release any important resources (e.g. camera). */
-  void onDestroy();
+  void onDestroy(Activity activity);
 }
