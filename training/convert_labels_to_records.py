@@ -23,6 +23,7 @@ import random
 import sys
 import collections
 import multiprocessing
+import multiprocessing.pool
 import io
 from PIL import Image
 import numpy as np
