@@ -190,8 +190,10 @@ Choosing the correct model is often as important as having proper data
 available. For efficient inference on a mobile device, we recommend using
 something from the MobileNet + SSD family of detectors. The provided model was
 trained on a MobileNet V1 + SSD architecture, with a 0.5 depthwise multiplier.
-You can find the pipeline configuration for the model in the `models/`
-directory.
+You can find the pipeline configuration for the model in the
+`models/sample_mobilenet_v1_0.5_ssd_quantized` directory, as well as the 
+pretrained checkpoint (trained on FTC game objects) which you can use to 
+bootstrap your own training.
 
 Some things to keep in mind when selecting a model:
 
@@ -242,10 +244,50 @@ parameters at different times. You'll need to convert these checkpoints into a
 more useful format, as discussed in the above tutorials. You can use the
 `export_inference_graph.py` script to yield a model which can be used on the
 desktop. If you are using SSD + Mobilenet, you can use the
-`export_tflite_ssd_graph.py` to generate a `.tflite` file. If not, you can do
-this process manually with other provided scripts in the Object Detection API.
-Both of the `export` scripts are already present in the Object Detection API
-(you may have used them in the object detection tutorial linked above).
+`export_tflite_ssd_graph.py` and TOCO to generate a `.tflite` file. If you are
+using a different model, you can do this process manually with other provided 
+scripts in the Object Detection API. Both of the `export` scripts are already 
+present in the Object Detection API (you may have used them in the object 
+detection tutorial linked above).
+
+Example invocation for `export_inference_graph.py`:
+
+```
+python3 $MODEL_RESEARCH_DIR/object_detection/export_inference_graph.py \
+    --input_type image_tensor \
+    --pipeline_config_path models/sample_mobilenet_v1_0.5_ssd_quantized/pipeline.config \
+    --trained_checkpoint_prefix models/sample_mobilenet_v1_0.5_ssd_quantized/model.ckpt-200007 \
+    --output_directory models/sample_mobilenet_v1_0.5_ssd_quantized/output_inference_graph
+```
+
+Example invocation for `export_tflite_ssd_graph.py`:
+
+```
+python3 $MODEL_RESEARCH_DIR/object_detection/export_tflite_ssd_graph.py \
+    --pipeline_config_path models/sample_mobilenet_v1_0.5_ssd_quantized/pipeline.config \
+    --trained_checkpoint_prefix models/sample_mobilenet_v1_0.5_ssd_quantized/model.ckpt-200007 \
+    --output_directory models/sample_mobilenet_v1_0.5_ssd_quantized/tflite \
+    --add_postprocessing_op=true
+```
+
+You'll then need to call the following, from the tensorflow directory:
+
+```
+bazel run -c opt tensorflow/contrib/lite/toco:toco -- \
+    --input_file=[PATH TO THIS REPO]/training/models/sample_mobilenet_v1_0.5_ssd_quantized/tflite/tflite_graph.pb \
+    --output_file=[PATH TO THIS REPO]/training/models/sample_mobilenet_v1_0.5_ssd_quantized/tflite/detect.tflite \
+    --input_shapes=1,300,300,3 \
+    --input_arrays='normalized_input_image_tenor' \
+    --ouptut_arrays='TFLite_Detection_PostProcess','TFLite_Detection_PostProcess:1','TFLite_Detection_PostProcess:2','TFLite_Detection_PostProcess:3' \
+    --inference_type=QUANTIZED_UINT8 \
+    --mean_values=128 \
+    --std_values=128 \
+    --change_concat_input_ranges=false \
+    --allow_custom_ops
+```
+
+For reference, the sample `detect.tflite` file is provided in
+`models/sample_mobilenet_v1_0.5_ssd_quantized/detect.tflite`.
 
 ## Visualization
 
@@ -256,8 +298,9 @@ real time. It also makes for slightly more portable demonstrations! Example
 invocation:
 
 ```
-python3 camera_cv.py --movie validation_data/[filename].mp4 \
-    --path_to_model models/[train dir]/output_inference_graph/frozen_inference_graph.pb
+python3 camera_cv.py \
+    --movie validation_data/validation_example_vid.mp4 \
+    --path_to_model models/sample_mobilenet_v1_0.5_ssd_quantized/output_inference_graph/frozen_inference_graph.pb
 ```
 
 ## Deploy Model
