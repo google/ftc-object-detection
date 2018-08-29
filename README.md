@@ -20,7 +20,7 @@ library. In no particular order, here are some of our goals.
 
 1. **Democratize machine learning.** We believe machine learning is becoming a
    fundamental technology that everyone (e.g. all FTC teams) should be able to
-   benefit from and have access to, and this is another step in that direction.
+   benefit from and have access to, and this is a step in that direction.
 1. **Enable higher levels of autonomy.** It's no secret that the reason for
    machine learning's success has been its unparalleled performance and accuracy
    across a wide range of real world tasks. By bringing some of this technology
@@ -40,20 +40,26 @@ You can then continue to the usage section, as above.
 
 ## How does it work?
 
+Definitions:
+* frame: A single image, from e.g. a camera or a video
+* model: A pretrained machine learned model which operates on frames
+* recognition: Output from the model, annotating all objects in a frame
+* tracker: An object tracker to smoothly interpolate recognitions
+
 The library's operation can be thought of as being broken into a few distinct
 steps:
 
-1. Initialize a source for image frames
+1. Initialize a source for frames
 1. Load the labels and models into memmory
-1. Start background jobs and other objects
+1. Start background processing and other objects
 
 Then, the following runs indefinitely:
 
-1. Get a new image frame
-1. If possible, send the frame to the neural network
-1. Feed the frame through an object tracker
-1. If the neural network is done, feed its results into the tracker
-1. Make the most recent recognitions available to the user
+1. Get a new frame
+1. If possible, pass the frame to the model
+1. Feed the frame through the tracker
+1. If the model is done processing, feed its results into the tracker
+1. Make the most recent model results (recognitions) available to the client
 
 A more detailed understanding of each of the steps involved can be found in the
 documentation and comments for each of the parts of the system.
@@ -63,7 +69,9 @@ documentation and comments for each of the parts of the system.
 We would like to thank Aakanksha Chowdhery, Vivek Rathod, and Ronny Votel for
 their help and support with TensorFlow Lite and the TensorFlow Object Detection
 API. We would also like to think David Konerding and Liz Looney for their
-mentorship throughout the development cycle. Finally, we would like to thank
-everyone involved in coordinating and participating in our data collection
-event, including Patricia Cruz, Aaron Cunningham, Calvin Johnson, Nathan
-Mulcahey, and FTC teams 8381, 11039, 12454, 12635, 12869, and 13799.
+mentorship throughout the development cycle, as well as the folks on the FTC SDK
+team (especially Tom Eng, Bob Atkinson, and Craig MacFarlane) for their help
+with FTC-speciic integration. Finally, we would like to thank everyone involved 
+in coordinating and participating in our data collection event, including 
+Patricia Cruz, Aaron Cunningham, Calvin Johnson, Nathan Mulcahey, and FTC teams 
+8381, 11039, 12454, 12635, 12869, and 13799.
