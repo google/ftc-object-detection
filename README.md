@@ -1,9 +1,7 @@
 # TensorFlowObjectDetector (TFOD) for FTC
 
-[![Field Perspective Thumbnail](http://img.youtube.com/vi/PJrMLcY_Es4/0.jpg)](
-http://www.youtube.com/watch?v=PJrMLcY_Es4 "Seek Example Field Perspective")
-[![Robot Perspective Thumbnail](http://img.youtube.com/vi/HuJefEaKN0w/0.jpg)](
-http://www.youtube.com/watch?v=HuJefEaKN0w "Seek Example Robot Perspective")
+[![Seek Example Thumbnail](https://img.youtube.com/vi/PJrMLcY_Es4/maxresdefault.jpg)](
+https://www.youtube.com/watch?v=PJrMLcY_Es4&list=PL7jOvcu8grvvO54G4f0QdUCyg8loid5Wd&index=1 "Seek Example Videos")
 
 ## What is this?
 

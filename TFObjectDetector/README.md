@@ -5,7 +5,7 @@ demo application. All of the code in this library and application is completely
 independent of any FTC source code, and thus can be used for non-FTC projects,
 or projects outside the FTC SDK, if desired.
 
-[![TFOD App Thumbnail](http://img.youtube.com/vi/h9BIVD_vrEY/0.jpg)](
+[![TFOD App Thumbnail](http://img.youtube.com/vi/h9BIVD_vrEY/maxresdefault.jpg)](
 http://www.youtube.com/watch?v=h9BIVD_vrEY "TFOD App Example")
 
 ## Installation
