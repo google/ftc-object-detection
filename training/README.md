@@ -9,7 +9,23 @@ tasks, as well as other implementations and experiments. Make sure to use the
 code if the tips don't make sense. Then, post an issue or a pull request to get
 it fixed!
 
-## TensorFlow Object Detection API
+## Prerequisites
+
+In order for the training scripts to work, you'll need to install the following
+libraries and packages.
+
+### OpenCV 3.4+
+
+The scripts in this directory rely on a relatively modern version of [OpenCV](https://opencv.org/),
+at least 3.4. You should be able to install the most recent versions through
+`pip`:
+
+```
+python3 -m pip install opencv-python
+python3 -m pip install opencv-contrib-python
+```
+
+### TensorFlow Object Detection API
 
 All of our model configuration and training has been done with the [TensorFlow
 Object Detection
@@ -71,7 +87,8 @@ There are a couple of objectives which should be met when trying to gather video
 data. To achieve the best performance from the tracker (ensuring high quality
 labels), as well as the best performance from the model (robustness, accuracy,
 precision, etc.), you should try to ensure the following criteria (separated by
-why they imapact more):
+why they imapact more). A sample video which meets these criteria is available
+at `train_data/train_example_vid.mp4`.
 
 **Tracker:**
 
@@ -120,14 +137,16 @@ Now that you've acquired your perfect videos, you can label them as follows;
    bounding boxes as tight around the object as possible. Example invocation:
 
    ```
-   python3 find_bb.py train_data/[fileame].mp4
+   python3 find_bb.py --help
+   python3 find_bb.py train_data/train_example_vid.mp4
    ```
 
 1. Use `tracking.py` to update the initial labels through the entire video,
    saving each individual data pair as a new set of files. Example invocation:
 
    ```
-   python3 tracking.py train_data/[filename].mp4
+   python3 tracking.py --help
+   python3 tracking.py train_data/train_example_vid.mp4 -s 1.2
    ```
 
 In some cases, such as with real world videos (e.g. a robot's perspective during
@@ -136,7 +155,8 @@ the tracker to work. Instead, you can use `labeler.py` to step through the video
 and label individual frames manually. Example invocation:
 
 ```
-python3 labeler.py train_data/[filename].mp4
+python3 labeler.py --help
+python3 labeler.py train_data/train_example_vid.mp4
 ```
 
 ### Label Postprocessing
@@ -170,8 +190,10 @@ Choosing the correct model is often as important as having proper data
 available. For efficient inference on a mobile device, we recommend using
 something from the MobileNet + SSD family of detectors. The provided model was
 trained on a MobileNet V1 + SSD architecture, with a 0.5 depthwise multiplier.
-You can find the pipeline configuration for the model in the `models/`
-directory.
+You can find the pipeline configuration for the model in the
+`models/sample_mobilenet_v1_0.5_ssd_quantized` directory, as well as the 
+pretrained checkpoint (trained on FTC game objects) which you can use to 
+bootstrap your own training.
 
 Some things to keep in mind when selecting a model:
 
@@ -222,10 +244,50 @@ parameters at different times. You'll need to convert these checkpoints into a
 more useful format, as discussed in the above tutorials. You can use the
 `export_inference_graph.py` script to yield a model which can be used on the
 desktop. If you are using SSD + Mobilenet, you can use the
-`export_tflite_ssd_graph.py` to generate a `.tflite` file. If not, you can do
-this process manually with other provided scripts in the Object Detection API.
-Both of the `export` scripts are already present in the Object Detection API
-(you may have used them in the object detection tutorial linked above).
+`export_tflite_ssd_graph.py` and TOCO to generate a `.tflite` file. If you are
+using a different model, you can do this process manually with other provided 
+scripts in the Object Detection API. Both of the `export` scripts are already 
+present in the Object Detection API (you may have used them in the object 
+detection tutorial linked above).
+
+Example invocation for `export_inference_graph.py`:
+
+```
+python3 $MODEL_RESEARCH_DIR/object_detection/export_inference_graph.py \
+    --input_type image_tensor \
+    --pipeline_config_path models/sample_mobilenet_v1_0.5_ssd_quantized/pipeline.config \
+    --trained_checkpoint_prefix models/sample_mobilenet_v1_0.5_ssd_quantized/model.ckpt-200007 \
+    --output_directory models/sample_mobilenet_v1_0.5_ssd_quantized/output_inference_graph
+```
+
+Example invocation for `export_tflite_ssd_graph.py`:
+
+```
+python3 $MODEL_RESEARCH_DIR/object_detection/export_tflite_ssd_graph.py \
+    --pipeline_config_path models/sample_mobilenet_v1_0.5_ssd_quantized/pipeline.config \
+    --trained_checkpoint_prefix models/sample_mobilenet_v1_0.5_ssd_quantized/model.ckpt-200007 \
+    --output_directory models/sample_mobilenet_v1_0.5_ssd_quantized/tflite \
+    --add_postprocessing_op=true
+```
+
+You'll then need to call the following, from the tensorflow directory:
+
+```
+bazel run -c opt tensorflow/contrib/lite/toco:toco -- \
+    --input_file=[PATH TO THIS REPO]/training/models/sample_mobilenet_v1_0.5_ssd_quantized/tflite/tflite_graph.pb \
+    --output_file=[PATH TO THIS REPO]/training/models/sample_mobilenet_v1_0.5_ssd_quantized/tflite/detect.tflite \
+    --input_shapes=1,300,300,3 \
+    --input_arrays='normalized_input_image_tenor' \
+    --ouptut_arrays='TFLite_Detection_PostProcess','TFLite_Detection_PostProcess:1','TFLite_Detection_PostProcess:2','TFLite_Detection_PostProcess:3' \
+    --inference_type=QUANTIZED_UINT8 \
+    --mean_values=128 \
+    --std_values=128 \
+    --change_concat_input_ranges=false \
+    --allow_custom_ops
+```
+
+For reference, the sample `detect.tflite` file is provided in
+`models/sample_mobilenet_v1_0.5_ssd_quantized/detect.tflite`.
 
 ## Visualization
 
@@ -236,8 +298,9 @@ real time. It also makes for slightly more portable demonstrations! Example
 invocation:
 
 ```
-python3 camera_cv.py --movie validation_data/[filename].mp4 \
-    --path_to_model models/[train dir]/output_inference_graph/frozen_inference_graph.pb
+python3 camera_cv.py \
+    --movie validation_data/validation_example_vid.mp4 \
+    --path_to_model models/sample_mobilenet_v1_0.5_ssd_quantized/output_inference_graph/frozen_inference_graph.pb
 ```
 
 ## Deploy Model
