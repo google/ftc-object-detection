@@ -22,16 +22,46 @@ import bbox_writer
 import argparse
 import drawing_utils
 
+description_text="""\
+Use this script to draw initial bounding boxes on videos.
+
+This script is meant to work hand in hand with tracking.py. To label a new
+video, you should first annotate bounding boxes on the video's first frame with
+this script, and then load the video into tracking.py to track the bounding
+boxes.
+
+To label an object, you should first pick the class that the object belongs to,
+by pressing any (lowercase) alphanumeric character on your keyboard. This will
+set the class to be that single character, e.g. 'v', 'a', 's', 'u', etc. After
+picking a class, you can use your mouse to click on two opposing corners of a
+box around an object. After you click the second point, the object will be
+labeled with the class you specified earlier. At this point, you can change the
+class, or draw another box with the same class.
+
+Once you're satisfied with the boxes you've drawn, you can exit the program by
+pressing 'q'. This also means that 'q' is not a valid object class.
+
+If you would like to clear the first point you selected, you can press Escape.
+If you would like to remove a bounding box you've drawn already, you should
+simply restart the program, which will clear all bounding boxes.
+
+Finally, you should try to make bounding boxes drawn here as tight as possible.
+Any scaling of bounding boxes that needs to be performed can be done in
+tracking.py.
+"""
+
+parser = argparse.ArgumentParser(
+        description=description_text,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument("filename", type=argparse.FileType("r"),
+        help="path to video file")
+args = parser.parse_args()
+
 window = 'draw on me!'
 points = []
 bboxes = []
 classes = []
 current_class = None
-
-parser = argparse.ArgumentParser()
-parser.add_argument("filename", type=argparse.FileType("r"),
-        help="path to video file")
-args = parser.parse_args()
 
 WINDOW_SCALE = 0.5
 

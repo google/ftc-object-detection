@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import time
 import numpy as np
 import os
@@ -23,8 +24,26 @@ from object_detector import ObjectDetector as TFObjectDetector
 from object_detector_lite import ObjectDetector as LiteObjectDetector
 import cv2
 
-import argparse
-parser = argparse.ArgumentParser()
+description_text = """\
+Use this script to visualize network output on each frame of a video.
+
+Once you've trained a network, you may want to intuitively understand its
+performance on different videos, especially looking at frame to frame
+performance in a single video. This script enables that visualization for both
+TensorFlow and TFLite model formats. Additionally, this script lets you save a
+video with each frame annotated with output from the network, as well as save
+individual annotated frames if desired.
+"""
+
+epilog_text = """\
+example:
+    ./camera_cv.py --movie [movie.mp4] --path_to_model [model.pb]
+"""
+
+parser = argparse.ArgumentParser(
+        description=description_text,
+        epilog=epilog_text,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--movie", type=str, default="",
         help="Movie file to run prediction on")
 parser.add_argument("--write_images", default=False, action="store_true",
