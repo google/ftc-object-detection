@@ -19,7 +19,35 @@ import argparse
 import json
 import subprocess
 
-parser = argparse.ArgumentParser()
+description_text = """\
+Use this script to correctly rotate portrait videos for processing.
+
+Oftentimes when recording portrait video, rather than setting the aspect ratio
+to a portrait aspect ratio, the video is simply given a metadata tag which
+indicates that the video should be interpreted as portrait. Unfortunately, this
+tag is not interpreted by OpenCV when it opens videos, so the portrait videos
+must actually be rotated. This script accomplishes that.
+
+The specified folder is crawled to find all .mp4 files. If the file has a
+metadata tag which indicates it is rotated, the video is re-encoded with ffmpeg
+to correct the rotation. Checking the metadata requires ffprobe to be
+installed, while re-encoding the video requires ffmpeg. Installing ffmpeg
+usually installs ffprobe.
+
+In short, run this script whenever importing new video files to label to make
+sure they are processed correctly.
+"""
+
+epilog_text = """\
+example:
+    ./rotate_videos.py --dry [folder]          sanity check with a dry run
+    ./rotate_videos.py -d [folder]             rotate videos, deleting originals
+"""
+
+parser = argparse.ArgumentParser(
+        description=description_text,
+        epilog=epilog_text,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("folder", type=str, help="Folder containing videos")
 parser.add_argument("-d", "--delete", action="store_true",
         default=False, help="Delete any files which get rotated")

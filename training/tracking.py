@@ -25,18 +25,59 @@ import multiprocessing
 import argparse
 import drawing_utils
 
-parser = argparse.ArgumentParser()
+description_text="""\
+Use this script to generate labeled image pairs from an initial labeled frame.
+
+This script is meant to work hand in hand with find_bb.py. To label a new video,
+you should first annotate bounding boxes with find_bb.py, and then load the
+video into this script to track those bounding boxes.
+
+By default, you will first be asked to verify the loaded annotations for the
+video. You should sanity check these annotations to make sure that the bounding
+boxes are tight, and that the classes are correct. Press 'y' to indicate
+correctness, or 'n' to indicate that something is wrong. If you press 'n', you
+should correct the labels by running find_bb.py again.
+
+Once you press 'y', the tracking will start. Each bounding box will be tracked
+through each frame with the specified tracker. You may see two bounding boxes, a
+green and a yellow one. The yellow one is affected by the --scale parameter, and
+is the region the tracker is tracking. The green one is the one that actually
+gets saved. If you only see a yellow box, the two boxes are identical.
+
+If at any point the tracked boxes deviate too far from the object, you can pause
+execution by pressing SpaceBar. You can then click and drag the white circles to
+correct the bounding boxes. Remember that you'll usually want the green box to
+be as tight as possible to the object of interest. Once you are satisfied with
+the new boxes, press SpaceBar again to continue.
+
+The script will automatically terminate once the end of the video is reached.
+Alternatively, you can press 'q' to terminate early.
+"""
+
+epilog_text="""\
+example:
+    ./tracking.py [filename].mp4                    use all default paramters
+    ./tracking.py [filename].mp4 -s 1.2             change scale for tracker box
+    ./tracking.py [filename].mp4 -x -s 1.5 -t 1     try out different parameters
+"""
+
+parser = argparse.ArgumentParser(
+        description=description_text,
+        epilog=epilog_text,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("filename", type=argparse.FileType('r'))
 parser.add_argument("-s", "--scale", type=float, default=1.0, required=False,
         help="Scale factor to help the tracker along")
-parser.add_argument("-t", "--tracker", type=int, default=2, required=False)
-parser.add_argument("-y", "--yes", action="store_true", default=False)
+parser.add_argument("-t", "--tracker", type=int, default=2, required=False,
+        help="Index of tracker to use, [0-7]")
+parser.add_argument("-y", "--yes", action="store_true", default=False,
+        help="Skip initial bounding box validation")
 parser.add_argument("-f", "--frames", type=int,
-        help="Number of steps between each frame to save.", default=10)
+        help="Number of steps between each frame to save", default=10)
 parser.add_argument("-x", "--experiment", action="store_true", default=False,
         help="Don't write out any files")
 parser.add_argument("-r", "--refine", action="store_true", default=False,
-        help="Automatically refine bounding boxes during tracking")
+        help="Auto-refine bounding boxes during tracking (experimental)")
 args = parser.parse_args()
 
 window = "Tracking"

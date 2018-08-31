@@ -21,16 +21,61 @@ import drawing_utils
 import os
 import bbox_writer
 
+description_text="""\
+Use this script to label individual frames of a video manually.
 
-WINDOW = "Tracking"
-WINDOW_SCALE = .75
-CACHE_SIZE = 150 # 5 seconds worth of frames
+In a similar manner to find_bb.py, this script lets you individually annotate
+every single frame in a video. However, this script is meant to work standalone,
+and does not rely on any tracking to interpolate between frames. This script is
+best used in cases where a tracker based approach would fail, such as in videos
+that have very fast moving objects, or objects that are coming in and out of the
+frame constantly.
 
-parser = argparse.ArgumentParser()
+Normal Mode Keybinds:
+
+    SpaceBar: Toggle autoplay (step through frames without pausing to label)
+    j:        Cut autoplay delay in half
+    k:        Double autoplay delay
+    n:        Go to the next frame which will be saved, and pause to label
+    h:        Step backward one frame
+    l:        Step forward one frame
+    q:        Quit the labeler
+
+Label Mode Keybinds:
+
+    Shift + [a-z]: Set [a-z] as the current class
+    c:             Clear all bounding boxes
+    x:             Clear the most recent bounding box
+    r:             Load the last set of bounding boxes
+    Mouse:         Draw bounding boxes
+
+In normal usage, you'll likely want to follow a workflow like this:
+
+    1. Enable autoplay (SpaceBar), disabling (also SpaceBar) when you find a
+    video segment which contains any of the objects of interest.
+    2. If you paused at the wrong frame, use 'h' an 'l' to step by a single
+    frame until you find the right frame.
+    3. Press 'n' to skip forward to the next saved frame.
+    4. Label the current saved frame.
+    5. Repeat steps 3 and 4 until the objects of interest are no longer visible.
+    6. Go back to step 1, using 'j' and 'k' to adjust autoplay speed as desired.
+
+Note that if you run this script multiple times on the same video, any previous
+labels will be loaded. This lets you take a break from labeling, and also lets
+you add new labels later if desired.
+"""
+
+parser = argparse.ArgumentParser(
+        description=description_text,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("filename", type=argparse.FileType('r'))
 parser.add_argument("-f", "--frames", type=int,
         help="Number of steps between each frame to save.", default=10)
 args = parser.parse_args()
+
+WINDOW = "Tracking"
+WINDOW_SCALE = .75
+CACHE_SIZE = 150 # 5 seconds worth of frames
 
 last_bboxes = []
 last_classes = []

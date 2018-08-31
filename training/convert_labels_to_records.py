@@ -33,11 +33,29 @@ import bbox_writer
 import tensorflow as tf
 from object_detection.utils import dataset_util
 
-# NamedTuple to store results from example writing workers
-Result = collections.namedtuple("RecordWritingResult",
-        ["id", "record_count", "class_count", "negative_count"])
+description_text = """\
+Use this script to convert labeled images into TFRecord files for training.
 
-parser = argparse.ArgumentParser()
+Both scripts in the labeling pipeline (labeler.py, tracking.py) store annotated
+images as an image with a corresponding .txt file containing labels. While that
+format is convenient for human readability, it is not the format TensorFlow is
+expecting. This script converts the paired image format to the TFRecord format
+that TensorFlow is expecting. Furthermore, this script can automatically
+generate an evaluation split, or create one from a separate folder. Finally, the
+label map required for the Object Detection API is generated and placed into the
+specified folder.
+"""
+
+epilog_text = """\
+example:
+    ./convert_labels_to_records.py [folder]               convert without eval
+    ./convert_labels_to_records.py [folder] --eval        generate an eval split
+"""
+
+parser = argparse.ArgumentParser(
+        description=description_text,
+        epilog=epilog_text,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("folder", type=str,
         help="Folder containing training data. All converted data output here.")
 parser.add_argument("-n", "--number", type=int, default=10,
@@ -53,8 +71,10 @@ eval_options.add_argument("--eval_folder", type=str, default=None,
         help="Folder containing eval data")
 
 args = parser.parse_args()
-print(args)
 
+# NamedTuple to store results from example writing workers
+Result = collections.namedtuple("RecordWritingResult",
+        ["id", "record_count", "class_count", "negative_count"])
 
 def create_tf_example(labels, txt_full_path):
 
