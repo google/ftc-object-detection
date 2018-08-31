@@ -1,6 +1,7 @@
 # TensorFlowObjectDetector (TFOD) for FTC
 
-TODO(vasuagrawal): [insert a pretty video / gif here]
+[![Seek Example Thumbnail](https://img.youtube.com/vi/PJrMLcY_Es4/maxresdefault.jpg)](
+https://www.youtube.com/watch?v=PJrMLcY_Es4&list=PL7jOvcu8grvvO54G4f0QdUCyg8loid5Wd&index=1 "Seek Example Videos")
 
 ## What is this?
 
