@@ -37,5 +37,5 @@ public interface FrameGenerator {
   @NonNull YuvRgbFrame getFrame() throws InterruptedException;
 
   /** Method to serve as a destructor to release any important resources (e.g. camera). */
-  void onDestroy(Activity activity);
+  void shutdown(Activity activity);
 }

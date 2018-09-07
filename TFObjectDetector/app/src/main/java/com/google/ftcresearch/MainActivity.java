@@ -164,7 +164,7 @@ public class MainActivity extends AppCompatActivity {
 
     // tfod doesn't shut down the frame generator, so we do that ourselves.
     if (frameGenerator != null) {
-      frameGenerator.onDestroy(this);
+      frameGenerator.shutdown(this);
     }
   }
 }
