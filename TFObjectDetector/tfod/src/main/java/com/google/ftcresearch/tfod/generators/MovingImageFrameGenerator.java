@@ -117,8 +117,7 @@ public class MovingImageFrameGenerator implements FrameGenerator {
   }
 
   @Override
-  public void onDestroy(Activity activity) {
-
+  public void shutdown(Activity activity) {
   }
 
   public static MovingImageFrameGenerator makeFromResourceId(Context context, int resourceId) {

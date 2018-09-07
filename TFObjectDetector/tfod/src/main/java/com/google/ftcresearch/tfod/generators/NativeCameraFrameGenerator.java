@@ -157,7 +157,7 @@ public class NativeCameraFrameGenerator implements FrameGenerator {
   }
 
   @Override
-  public void onDestroy(Activity activity) {
+  public void shutdown(Activity activity) {
     // TODO(vasuagrawal): Verify that this actually removes the view in FTC code.
 
     TFObjectDetector.runOnUiThreadAndWait(activity, () -> {

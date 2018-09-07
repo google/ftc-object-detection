@@ -75,8 +75,7 @@ public class ImageFrameGenerator implements FrameGenerator {
   }
 
   @Override
-  public void onDestroy(Activity activity) {
-
+  public void shutdown(Activity activity) {
   }
 
   /** Convenience method to handle loading bitmap from a resource id. */
