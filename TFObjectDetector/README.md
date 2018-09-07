@@ -71,7 +71,7 @@ The basic usage of the library is very simple:
 1. Contintually check for recognitions from `takeAnnotatedFrame()` from the
    `TFObjectDetector`.
 1. Clean up the `TFObjectDetector` and `FrameGenerator` upon shutdown, via
-   `shutdown()` and `onDestroy()` respectively.
+   `TFObjectDetector.shutdown()` and `FrameGenerator.shutdown()` respectively.
 
 This will look something like this:
 
@@ -88,7 +88,7 @@ while (true) {
 }
 
 tfod.shutdown();
-frameGenerator.onDestroy();
+frameGenerator.shutdown();
 ```
 
 The above loop will get annotated frames at some predetermined rate, and "do
@@ -112,7 +112,7 @@ you'd like. If you have new features, please submit a pull request!
 A `FrameGenerator` is used internally by the library to get frames to be
 processed. While there are a couple provided `FrameGenerator`s, you may have a
 use case which doesn't neatly fit into one of the provided ones. You can simply
-create a new object implementing the `FrameGenrator` interface, and the library
+create a new object implementing the `FrameGenerator` interface, and the library
 will happily use your new image source. Here are some ideas:
 
 * Generate frames from a video stored as a raw resource
@@ -175,4 +175,4 @@ the most common items:
 * **Cleanup** -- It is imperative that the library is shut down through its
   `shutdown()` method, so that it has ample time to free up resources.
   Furthermore, you must remember that you, the user, are responsible for
-  separately closing the `FrameGenerator` (with `onDestroy()`) if necessary.
+  separately closing the `FrameGenerator` (with `shutdown()`) if necessary.
