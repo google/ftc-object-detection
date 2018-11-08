@@ -69,10 +69,10 @@ documentation and comments for each of the parts of the system.
 
 We would like to thank Aakanksha Chowdhery, Vivek Rathod, and Ronny Votel for
 their help and support with TensorFlow Lite and the TensorFlow Object Detection
-API. We would also like to think David Konerding and Liz Looney for their
-mentorship throughout the development cycle, as well as the folks on the FTC SDK
-team (especially Tom Eng, Bob Atkinson, and Craig MacFarlane) for their help
-with FTC-speciic integration. Finally, we would like to thank everyone involved 
-in coordinating and participating in our data collection event, including 
-Patricia Cruz, Aaron Cunningham, Calvin Johnson, Nathan Mulcahey, and FTC teams 
-8381, 11039, 12454, 12635, 12869, and 13799.
+API. We would also like to thank Vasu Agrawal for his tireless work in developing
+this library, David Konerding and Liz Looney for their mentorship throughout the
+development cycle, as well as the folks on the FTC SDK team (especially Tom Eng,
+Bob Atkinson, and Craig MacFarlane) for their help with FTC-speciic integration.
+Finally, we would like to thank everyone involved in coordinating and participating
+in our data collection event, including Patricia Cruz, Aaron Cunningham, Calvin Johnson,
+Nathan Mulcahey, and FTC teams 8381, 11039, 12454, 12635, 12869, and 13799.
