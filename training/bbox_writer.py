@@ -32,6 +32,7 @@ def write_bboxes(bboxes, classes, filename):
             size = bbox[2:]
             p1 = p0 + size
 
+            # [p0_x,p0_y,p1_x,p1_y,class]
             f.write("%s,%s,%s,%s,%s\n" % (p0[0], p0[1], p1[0], p1[1], cls))
 
 
