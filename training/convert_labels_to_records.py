@@ -152,7 +152,7 @@ def write_record_from_list(id, labels, data, out_path):
 def get_shuffled_filenames(folder):
     # Grab the names of all of the pieces of train data
     train_txts = []
-    for root, dirs, files in os.walk(folder):
+    for root, dirs, files in os.walk(folder, followlinks=True):
         for name in files:
             if not name.endswith(".txt"): continue
             if name.endswith("rects.txt"): continue # ignore init files
@@ -281,7 +281,7 @@ if __name__ == "__main__":
     # Make the tasks for the workers to process
     tasks, labels = get_record_writing_tasks()
 
-    print(len(tasks))
+    print("Record writing tasks:", len(tasks))
 
     # Actually have the workers generate the records
     pool = multiprocessing.pool.ThreadPool()
