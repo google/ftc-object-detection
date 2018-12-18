@@ -78,10 +78,14 @@ parser.add_argument("-x", "--experiment", action="store_true", default=False,
         help="Don't write out any files")
 parser.add_argument("-r", "--refine", action="store_true", default=False,
         help="Auto-refine bounding boxes during tracking (experimental)")
+parser.add_argument("-w", "--window-scale", type=float, default=0.5,
+        help="Scale factor for visualization")
+parser.add_argument("-d", "--decimate", type=float, default=1.0,
+        help="Scale factor for tracked image. Smaller means faster tracking")
 args = parser.parse_args()
 
 window = "Tracking"
-WINDOW_SCALE = 0.5
+WINDOW_SCALE = args.window_scale
 
 # Make a bunch of trackers because I don't trust the opencv one
 tracker_fns = [
@@ -122,8 +126,7 @@ def verify_bboxes(frame, bboxes, classes, yes):
 
     frame_to_draw = frame.copy()
     drawing_utils.draw_bboxes(frame_to_draw, bboxes, classes, args.scale)
-    cv2.putText(frame_to_draw, "Do boxes look okay (y/n)?", (100, 80),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 0, 0), 2)
+    shadow_text(frame_to_draw, "Do boxes look okay (y/n)?", (100, 80))
     show_scaled(window, frame_to_draw)
 
     if yes:
@@ -137,6 +140,9 @@ def verify_bboxes(frame, bboxes, classes, yes):
 
 
 def init_trackers(tracker_index, frame, bboxes):
+    frame = scale_frame_for_tracking(frame)
+    bboxes = scale_bboxes_for_tracking(bboxes)
+
     trackers = []
     tracker_fn = tracker_fns[tracker_index]
 
@@ -396,6 +402,39 @@ def refine_bboxes(bboxes, classes, frame, trackers):
         print("new scaled bbox", bboxes[i])
 
 
+def shadow_text(frame, text, loc):
+    shadow_color = (0, 0, 0)
+    shadow_loc = tuple(np.array(loc) + 2)
+    font_color = (255, 255, 255)
+    font_weight = 2
+    font_scale = 0.75
+    font_type = cv2.FONT_HERSHEY_SIMPLEX
+
+    cv2.putText(frame, text, shadow_loc, font_type, font_scale, shadow_color,
+            font_weight)
+    cv2.putText(frame, text, loc, font_type, font_scale, font_color,
+            font_weight)
+
+
+def scale_bboxes_for_tracking(bboxes):
+    sf = args.decimate
+    scaled_bboxes = [tuple(np.array(bbox) * sf) for bbox in bboxes]
+    print("Scaling for tracking:", bboxes, scaled_bboxes)
+    return scaled_bboxes
+
+
+def scale_frame_for_tracking(frame):
+    sf = args.decimate
+    scaled_frame = cv2.resize(frame, None, fx=sf, fy=sf)
+    return scaled_frame
+
+
+def unscale_bbox_for_tracking(bbox):
+    sf = args.decimate
+    out = tuple(np.array(bbox) / sf)
+    return out
+
+
 if __name__ == "__main__":
     bboxes, classes = get_scaled_bboxes(args.filename.name, args.scale)
     vid = open_vid(args.filename.name)
@@ -434,7 +473,6 @@ if __name__ == "__main__":
 
         writer.write(frame) # Write out the first image, for consistency
 
-
     frame_count = -1 # So that the second frame is saved
 
     # Track through each frame
@@ -450,8 +488,11 @@ if __name__ == "__main__":
 
         start = time.time()
 
+        scaled_frame = scale_frame_for_tracking(frame)
         for i, tracker in enumerate(trackers):
-            ret, bbox = tracker.update(frame)
+            ret, bbox = tracker.update(scaled_frame)
+            bbox = unscale_bbox_for_tracking(bbox)
+
             if not ret:
                 print("Tracking failure for object", i)
                 bboxes.append(None)
@@ -473,17 +514,9 @@ if __name__ == "__main__":
         if args.frames > 0 and frame_count % args.frames == 0:
             save_frame(original, frame, bboxes, classes, run_path, frame_count)
 
-        font_color = (170, 50, 50)
-        font_weight = 2
-        font_scale = 0.75
-        font_type = cv2.FONT_HERSHEY_SIMPLEX
-
-        cv2.putText(frame, tracker_name, (100, 20), font_type, font_scale,
-                font_color, font_weight)
-        cv2.putText(frame, "FPS: " + str(int(fps)), (100, 50), font_type,
-                font_scale, font_color, font_weight)
-        cv2.putText(frame, "Frame: " + str(frame_count), (100, 80), font_type,
-                font_scale, font_color, font_weight)
+        shadow_text(frame, tracker_name, (100, 20))
+        shadow_text(frame, "FPS: " + str(int(fps)), (100, 50))
+        shadow_text(frame, "Frame: " + str(frame_count), (100, 80))
 
         # Display result
         show_scaled(window, frame)
