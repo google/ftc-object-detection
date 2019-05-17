@@ -22,7 +22,7 @@ If not, follow these steps to install the library in your own app.
    While this step isn't strictly necessary, it's a good way to get an intuition
    for the rough expected performance on your device.
 1. Build the `assemble` task for module `tfod`, either through Android Studio,
-   or by running `./gradlew :tfod:asssemble` from this directory.
+   or by running `./gradlew :tfod:assemble` from this directory.
 1. The `assemble` task creates a `tfod-release.aar` and `tfod-sources.jar`. The
    release aar is the only one you actually need to use this library, but your
    IDE may be able to use the sources jar for better code completion. Copy the
