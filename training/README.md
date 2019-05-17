@@ -277,8 +277,8 @@ bazel run -c opt tensorflow/contrib/lite/toco:toco -- \
     --input_file=[PATH TO THIS REPO]/training/models/sample_mobilenet_v1_0.5_ssd_quantized/tflite/tflite_graph.pb \
     --output_file=[PATH TO THIS REPO]/training/models/sample_mobilenet_v1_0.5_ssd_quantized/tflite/detect.tflite \
     --input_shapes=1,300,300,3 \
-    --input_arrays='normalized_input_image_tenor' \
-    --ouptut_arrays='TFLite_Detection_PostProcess','TFLite_Detection_PostProcess:1','TFLite_Detection_PostProcess:2','TFLite_Detection_PostProcess:3' \
+    --input_arrays='normalized_input_image_tensor' \
+    --outut_arrays='TFLite_Detection_PostProcess','TFLite_Detection_PostProcess:1','TFLite_Detection_PostProcess:2','TFLite_Detection_PostProcess:3' \
     --inference_type=QUANTIZED_UINT8 \
     --mean_values=128 \
     --std_values=128 \
