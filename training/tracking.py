@@ -74,6 +74,8 @@ parser.add_argument("-y", "--yes", action="store_true", default=False,
         help="Skip initial bounding box validation")
 parser.add_argument("-f", "--frames", type=int,
         help="Number of steps between each frame to save", default=10)
+parser.add_argument("-b", "--boxes_only", action="store_true", default=False,
+        help="Only write boxes files")
 parser.add_argument("-x", "--experiment", action="store_true", default=False,
         help="Don't write out any files")
 parser.add_argument("-r", "--refine", action="store_true", default=False,
@@ -141,13 +143,18 @@ def init_trackers(tracker_index, frame, bboxes):
     tracker_fn = tracker_fns[tracker_index]
 
     for i, bbox in enumerate(bboxes):
+        # For cv2.TrackerBoosting, we round the box coordinates to prevent a bus error
+        if tracker_fn == cv2.TrackerBoosting_create:
+            for j in range(len(bbox)):
+                bbox[j] = round(bbox[j])
+
         tracker = tracker_fn()
         ret = tracker.init(frame, tuple(bbox))
         if not ret:
             print("Unable to initialize tracker", i)
             continue
         else:
-            print("Successfully initialized tracker", i)
+            #print("Successfully initialized tracker", i)
             trackers.append(tracker)
 
     return trackers
@@ -167,8 +174,9 @@ def save_frame(orig, frame, bboxes, classes, run_name, frame_count):
     if args.experiment:
         return
 
-    cv2.imwrite(os.path.join(run_name, "%05d.png" % frame_count), orig)
-    cv2.imwrite(os.path.join(run_name, "rect_%05d.png" % frame_count), frame)
+    if not args.boxes_only:
+        cv2.imwrite(os.path.join(run_name, "%05d.png" % frame_count), orig)
+        cv2.imwrite(os.path.join(run_name, "rect_%05d.png" % frame_count), frame)
     bbox_writer.write_bboxes(bboxes, classes,
             os.path.join(run_name, "%05d.txt" % frame_count))
 
@@ -420,19 +428,20 @@ if __name__ == "__main__":
         except:
             print("Directory probably exists already, continuing anyway.")
 
-        writer = cv2.VideoWriter(
-                    "%s.avi" % run_path,
-                    cv2.VideoWriter_fourcc(*"MJPG"),
-                    int(vid.get(cv2.CAP_PROP_FPS)),
-                    (frame.shape[1], frame.shape[0]),
-                )
+        if not args.boxes_only:
+            writer = cv2.VideoWriter(
+                        "%s.avi" % run_path,
+                        cv2.VideoWriter_fourcc(*"MJPG"),
+                        int(vid.get(cv2.CAP_PROP_FPS)),
+                        (frame.shape[1], frame.shape[0]),
+                    )
 
-        # Quit if there was a problem
-        if not writer.isOpened():
-            print("Unable to open video!")
-            sys.exit()
+            # Quit if there was a problem
+            if not writer.isOpened():
+                print("Unable to open video!")
+                sys.exit()
 
-        writer.write(frame) # Write out the first image, for consistency
+            writer.write(frame) # Write out the first image, for consistency
 
 
     frame_count = -1 # So that the second frame is saved
@@ -441,7 +450,7 @@ if __name__ == "__main__":
     while vid.isOpened():
         ret, frame = vid.read()
         if not ret:
-            print("Unable to open frame, quitting!")
+            #print("Unable to open frame, quitting!")
             break
 
         frame_count += 1
@@ -453,7 +462,7 @@ if __name__ == "__main__":
         for i, tracker in enumerate(trackers):
             ret, bbox = tracker.update(frame)
             if not ret:
-                print("Tracking failure for object", i)
+                print("Tracking failure for object", i, "on frame", frame_count)
                 bboxes.append(None)
                 annotated_classes.append("[FAILURE] %d:%s" % (i, classes[i]))
             else:
@@ -487,7 +496,7 @@ if __name__ == "__main__":
 
         # Display result
         show_scaled(window, frame)
-        if not args.experiment:
+        if not args.experiment and not args.boxes_only:
             writer.write(frame)
 
         k = cv2.waitKey(1) & 0xff
@@ -503,7 +512,7 @@ if __name__ == "__main__":
 
     cv2.waitKey(1) # Just in case
 
-    if not args.experiment:
+    if not args.experiment and not args.boxes_only:
         writer.release()
 
     vid.release()

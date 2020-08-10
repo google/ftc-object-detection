@@ -21,16 +21,19 @@ def scale_bboxes(bboxes, sf):
     scaled_bboxes = []
 
     for bbox in bboxes:
-        p0 = bbox[:2].astype(float)
-        p1 = p0 + bbox[2:].astype(float)
-        size = p1 - p0
-        center = p0 + (size / 2)
+        if bbox is None:
+            scaled_bboxes.append(None)
+        else:
+            p0 = bbox[:2].astype(float)
+            p1 = p0 + bbox[2:].astype(float)
+            size = p1 - p0
+            center = p0 + (size / 2)
 
-        new_size = sf * size
-        p0 = center - new_size / 2
-        p1 = center + new_size / 2
+            new_size = sf * size
+            p0 = center - new_size / 2
+            p1 = center + new_size / 2
 
-        scaled_bboxes.append(np.array([p0, p1 - p0]).reshape(-1))
+            scaled_bboxes.append(np.array([p0, p1 - p0]).reshape(-1))
 
     return scaled_bboxes
 
