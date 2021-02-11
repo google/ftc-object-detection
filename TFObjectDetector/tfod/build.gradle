@@ -46,16 +46,10 @@ android {
 }
 
 dependencies {
-    implementation 'org.tensorflow:tensorflow-lite:0.0.0-nightly'
+    implementation 'org.tensorflow:tensorflow-lite:1.10.0'
     implementation 'com.android.support:appcompat-v7:27.1.1'
 }
 
-task sourcesJar(type: Jar) {
-    from android.sourceSets.main.java.srcDirs
-    classifier = 'sources'
-    include '**/*.java'
-    include '**/*.cc'
-    include '**/*.h'
-}
-
 assemble.dependsOn 'sourcesJar'
+
+apply from: '../packagePublish.gradle'
